@@ -108,10 +108,11 @@ class TelegramBot:
         updatedPrice = self.get_minutes(1, "ETHUSDT", 1, 1)
         new_array = pd.concat([self.eth_1m, updatedPrice])
         new_array['tsi'], new_array['signal_line'] = self.get_tsi_and_signal(new_array['close'], 25, 13, 12)
-        self.last_tsi = new_array['tsi'][-1]
+        self.last_tsi = new_array['tsi'].iloc[-1]
         self.eth_1m = new_array
 
-        await self.bot.send_message(chat_id, f'new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}')
+        if (self.last_tsi < self.short_alert or self.last_tsi > self.long_alert):
+            await self.bot.send_message(chat_id, f'new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}')
 
 
     def get_minutes(self, iterations, symbol, number_of_records, minutes_interval):
