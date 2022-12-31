@@ -75,7 +75,7 @@ class TelegramBot:
             self.short_alert = text
 
     async def get_current_tsi_message(self, update:Update, context):
-        await update.message.reply_text(f'last tsi: {self.last_tsi}, last eth close: {self.eth_1m['close'].iloc[-1]}')
+        await update.message.reply_text(f"last tsi: {self.last_tsi}, last eth close: {self.eth_1m['close'].iloc[-1]}")
 
     async def get_short(self, update:Update, context):
         await update.message.reply_text(f'number alert to short: {self.short_alert}')
