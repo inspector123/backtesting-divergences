@@ -120,24 +120,26 @@ class TelegramBot:
         self.eth_1m = eth_1m
         self.last_tsi = eth_1m['tsi'].iloc[-1]
         #eth = eth[eth['date_time'] >= '2020-01-01']
-        print(eth_1m.tail())
 
     def get_last_tsi(self):
-        updatedPrice = self.get_minutes(1, "ETHUSDT", 1, 1)
-        #new_array = pd.concat([self.eth_1m, updatedPrice])
-        new_df = self.eth_1m.append(updatedPrice, ignore_index=True)
-        new_df.reset_index(drop=True)
-        
-        new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 13, 12)
-        last_tsi = new_df['tsi'].iloc[-1]
-        self.last_tsi = last_tsi
-        self.eth_1m = new_df
-        print(self.eth_1m.tail())
+        try:
+            updatedPrice = self.get_minutes(1, "ETHUSDT", 1, 1)
+            #new_array = pd.concat([self.eth_1m, updatedPrice])
+            new_df = self.eth_1m.append(updatedPrice, ignore_index=True)
+            new_df.reset_index(drop=True)
+            
+            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 13, 12)
+            last_tsi = new_df['tsi'].iloc[-1]
+            self.last_tsi = last_tsi
+            self.eth_1m = new_df
 
-        if (self.last_tsi > self.short_alert or self.last_tsi < self.long_alert):
-            self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
-        
-        threading.Timer(60.0, self.get_last_tsi).start()
+            if (self.last_tsi > self.short_alert or self.last_tsi < self.long_alert):
+                self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
+        except(e):
+            print(e)
+            return
+        finally: 
+            threading.Timer(60.0, self.get_last_tsi).start()
 
     
 
@@ -175,6 +177,8 @@ class TelegramBot:
         except Exception as e:
             print(e)
 
-
-bot = TelegramBot(apikey, chat_id)
-bot.start_telegram_bots()
+try:
+    bot = TelegramBot(apikey, chat_id)
+    bot.start_telegram_bots()
+except:
+    print('error')
