@@ -84,7 +84,7 @@ class TelegramBot:
         await update.message.reply_text(f'number alert to long: {self.long_alert}')
 
     async def list_commands(self, update, context):
-        await update.message.reply_text(f""" commands: 
+        await update.message.reply_text(f"""    commands: 
         /long NUM: change long alert (should be negative)
         /short NUM: change short alert (should be POSITIVE)
         /whatislong: get tsi alert number
