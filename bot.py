@@ -27,7 +27,8 @@ class TelegramBot:
     def __init__(self, apikey, chat_id):
         self.apikey = apikey
         self.chat_id = chat_id
-    
+
+    started = False
     long_alert = -40
     short_alert = 40
     last_tsi = 0
@@ -36,12 +37,15 @@ class TelegramBot:
         
 
     async def start(self, update: Update, context: ContextTypes):
-
-        await self.bot.send_message(chat_id,'Starting.')
-        await self.bot.send_message(chat_id,'Getting Bybit and TSI data...')
-        self.assemble_data()
-        await self.bot.send_message(chat_id,'Retrieved data. Starting routine...')
-        self.start_routine()
+        if (self.started is False):
+            self.started = True
+            await self.bot.send_message(chat_id,'Starting.')
+            await self.bot.send_message(chat_id,'Getting Bybit and TSI data...')
+            self.assemble_data()
+            await self.bot.send_message(chat_id,'Retrieved data. Starting routine, please wait...')
+            self.start_routine()
+        else: 
+            await self.bot.send_message(chat_id, 'Already started.')
 
 
 
@@ -73,13 +77,38 @@ class TelegramBot:
     async def get_current_tsi_message(self, update:Update, context):
         await update.message.reply_text(f'last tsi: {self.last_tsi}')
 
+    async def get_short(self, update:Update, context):
+        await update.message.reply_text(f'number alert to short: {self.short_alert}')
+
+    async def get_long(self, update:Update, context):
+        await update.message.reply_text(f'number alert to long: {self.long_alert}')
+
+    async def list_commands(self, update, context):
+        await update.message.reply_text(f""" commands: 
+        /long NUM: change long alert (should be negative)
+        /short NUM: change short alert (should be POSITIVE)
+        /whatislong: get tsi alert number
+        /whatisshort: get tsi alert number
+        /help: help
+        /start: start
+        /tsi: get last tsi
+
+        
+        
+        """)
+
+
     def start_telegram_bots(self):
         app = ApplicationBuilder().bot(Bot(apikey)).build()
 
         app.add_handler(CommandHandler("start", self.start))
         app.add_handler(CommandHandler("long", self.long))
         app.add_handler(CommandHandler("short", self.short))
+        app.add_handler(CommandHandler("whatislong", self.get_long))
+        app.add_handler(CommandHandler("whatisshort", self.get_short))
+
         app.add_handler(CommandHandler("tsi", self.get_current_tsi_message))
+        app.add_handler(CommandHandler("help", self.list_commands))
         self.bot = app.bot
 
         app.run_polling()
@@ -91,6 +120,7 @@ class TelegramBot:
             time.sleep(1)
             current_time = pd.Timestamp(datetime.now()).second
         self.get_last_tsi()
+        self.send_to_telegram('Ready.')
         
         
 
@@ -115,7 +145,7 @@ class TelegramBot:
 
     def assemble_data(self):
         print('assembling')
-        eth_1m = self.get_minutes(20, "ETHUSDT", 200, 1)
+        eth_1m = self.get_minutes(5, "ETHUSDT", 200, 1)
         eth_1m['tsi'], eth_1m['signal_line'] = self.get_tsi_and_signal(eth_1m['close'], 25, 13, 12)
         self.eth_1m = eth_1m
         self.last_tsi = eth_1m['tsi'].iloc[-1]
@@ -173,7 +203,7 @@ class TelegramBot:
 
         try:
             response = requests.post(apiURL, json={'chat_id': chat_id, 'text': message})
-            print(response.text)
+            print(response.ok)
         except Exception as e:
             print(e)
 
