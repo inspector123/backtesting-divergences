@@ -75,7 +75,7 @@ class TelegramBot:
             self.short_alert = text
 
     async def get_current_tsi_message(self, update:Update, context):
-        await update.message.reply_text(f'last tsi: {self.last_tsi}')
+        await update.message.reply_text(f'last tsi: {self.last_tsi}, last eth close: {self.eth_1m['close'].iloc[-1]}')
 
     async def get_short(self, update:Update, context):
         await update.message.reply_text(f'number alert to short: {self.short_alert}')
@@ -122,11 +122,6 @@ class TelegramBot:
         self.get_last_tsi()
         self.send_to_telegram('Ready.')
         
-        
-
-    def check_tsi_1m(self):
-        print('check tsi')
-
     def get_tsi_and_signal(self, close, long, short, signal):
         diff = close - close.shift(1)
         abs_diff = abs(diff)
