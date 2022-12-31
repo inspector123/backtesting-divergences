@@ -8,6 +8,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import dotenv_values
 import nest_asyncio
 import requests
+import threading
 
 ## wait a minute... doesnt this mean i need a database of all the TSI over the last year?
 
@@ -46,14 +47,28 @@ class TelegramBot:
 
 
 
-    async def long(update: Update, context):
-        await update.message.reply_text(f'Updating long alert to {update.message.text}.')
+    async def long(self, update: Update, context):
+        text = update.message.text.replace('/long ', '')
+        
+        
+        if (text == '/long'):
+            await update.message.reply_text(f'Must add number.')
+            return
+        else: 
+            await update.message.reply_text(f'Updating long alert to {text}.')
+            self.longAlert = text
 
 
-    async def short(update: Update, context):
-        await update.message.reply_text(f'Updating short alert to {update.message.text}.')
-        print(update)
-        print(context)
+    async def short(self, update: Update, context):
+        text = update.message.text.replace('/short ', '')
+        
+        
+        if (text == '/short'):
+            await update.message.reply_text(f'Must add number.')
+            return
+        else: 
+            await update.message.reply_text(f'Updating short alert to {text}.')
+            self.shortAlert = text
 
     async def get_current_tsi_message(self, update:Update, context):
         await update.message.reply_text(f'last tsi: {self.last_tsi}')
@@ -71,13 +86,13 @@ class TelegramBot:
 
     def start_routine(self):
         print('starting routine')
-        
-        while True:
+        current_time = pd.Timestamp(datetime.now()).second
+        while (current_time != 2):
             time.sleep(1)
             current_time = pd.Timestamp(datetime.now()).second
-            if current_time == 2:
-
-                self.get_last_tsi()
+        self.get_last_tsi()
+        
+        
 
     def check_tsi_1m(self):
         print('check tsi')
@@ -114,12 +129,15 @@ class TelegramBot:
         new_df.reset_index(drop=True)
         
         new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 13, 12)
-        self.last_tsi = new_df['tsi'].iloc[-1]
+        last_tsi = new_df['tsi'].iloc[-1]
+        self.last_tsi = last_tsi
         self.eth_1m = new_df
         print(self.eth_1m.tail())
 
         if (self.last_tsi > self.short_alert or self.last_tsi < self.long_alert):
-            self.send_to_telegram(f'new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}')
+            self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
+        
+        threading.Timer(60.0, self.get_last_tsi).start()
 
     
 
