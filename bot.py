@@ -153,7 +153,7 @@ class TelegramBot:
             new_df = self.eth_1m.append(updatedPrice, ignore_index=True)
             new_df.reset_index(drop=True)
             
-            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 13, 12)
+            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 5, 12)
             last_tsi = new_df['tsi'].iloc[-1]
             self.last_tsi = last_tsi
             self.eth_1m = new_df
