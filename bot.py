@@ -115,7 +115,7 @@ class TelegramBot:
 
     def assemble_data(self):
         print('assembling')
-        eth_1m = self.get_minutes(10, "ETHUSDT", 200, 1)
+        eth_1m = self.get_minutes(20, "ETHUSDT", 200, 1)
         eth_1m['tsi'], eth_1m['signal_line'] = self.get_tsi_and_signal(eth_1m['close'], 25, 13, 12)
         self.eth_1m = eth_1m
         self.last_tsi = eth_1m['tsi'].iloc[-1]
