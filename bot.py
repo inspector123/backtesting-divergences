@@ -158,7 +158,7 @@ class TelegramBot:
             self.last_tsi = last_tsi
             self.eth_1m = new_df
 
-            if (self.last_tsi > self.short_alert or self.last_tsi < self.long_alert):
+            if (last_tsi > self.short_alert or last_tsi < self.long_alert):
                 self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
         except(e):
             print(e)
