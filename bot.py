@@ -60,7 +60,7 @@ class TelegramBot:
             return
         else: 
             await update.message.reply_text(f'Updating long alert to {text}.')
-            self.long_alert = text
+            self.long_alert = int(text)
 
 
     async def short(self, update: Update, context):
@@ -72,7 +72,7 @@ class TelegramBot:
             return
         else: 
             await update.message.reply_text(f'Updating short alert to {text}.')
-            self.short_alert = text
+            self.short_alert = int(text)
 
     async def get_current_tsi_message(self, update:Update, context):
         await update.message.reply_text(f"last tsi: {self.last_tsi}, last eth close: {self.eth_1m['close'].iloc[-1]}")
