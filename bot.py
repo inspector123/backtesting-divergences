@@ -9,6 +9,22 @@ from dotenv import dotenv_values
 import nest_asyncio
 import requests
 import threading
+import logging
+
+# create a logger
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
+
+# create a file handler
+handler = logging.FileHandler('logs.txt')
+handler.setLevel(logging.DEBUG)
+
+# create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# add the handler to the logger
+logger.addHandler(handler)
 
 ## wait a minute... doesnt this mean i need a database of all the TSI over the last year?
 
@@ -119,8 +135,12 @@ class TelegramBot:
         while (current_time != 2):
             time.sleep(1)
             current_time = pd.Timestamp(datetime.now()).second
-        self.get_last_tsi()
-        self.send_to_telegram('Ready.')
+        try:
+            self.get_last_tsi()
+        except Exception as e:
+            logger.error(e)
+        finally:
+            self.send_to_telegram('Ready.')
         
     def get_tsi_and_signal(self, close, long, short, signal):
         diff = close - close.shift(1)
@@ -153,18 +173,19 @@ class TelegramBot:
             new_df = self.eth_1m.append(updatedPrice, ignore_index=True)
             new_df.reset_index(drop=True)
             
-            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 5, 12)
+            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 5, 14)
             last_tsi = new_df['tsi'].iloc[-1]
             self.last_tsi = last_tsi
             self.eth_1m = new_df
+            logger.debug(f"{new_df['date_time'].iloc[-1]}")
 
             if (last_tsi > self.short_alert or last_tsi < self.long_alert):
                 self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
-        except(e):
-            print(e)
-            return
-        finally: 
+
             threading.Timer(60.0, self.get_last_tsi).start()
+        except Exception as e:
+            logger.error(e)
+            return
 
     
 
@@ -200,10 +221,10 @@ class TelegramBot:
             response = requests.post(apiURL, json={'chat_id': chat_id, 'text': message})
             print(response.ok)
         except Exception as e:
-            print(e)
+            logger.error(e)
 
 try:
     bot = TelegramBot(apikey, chat_id)
     bot.start_telegram_bots()
-except:
-    print('error')
+except Exception as e:
+    logger.error(e)
