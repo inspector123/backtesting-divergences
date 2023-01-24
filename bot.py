@@ -37,6 +37,7 @@ config = dotenv_values(".env")
 
 apikey = config["TELEGRAM_API_KEY"]
 chat_id = config["CHAT_ID_CHANNEL_BETA"]
+print(apikey, chat_id)
 
 class TelegramBot:
 
@@ -117,7 +118,7 @@ class TelegramBot:
     def start_telegram_bots(self):
         app = ApplicationBuilder().bot(Bot(apikey)).build()
 
-        app.add_handler(CommandHandler("start", self.start))
+        app.add_handler(CommandHandler("starttsi", self.start))
         app.add_handler(CommandHandler("long", self.long))
         app.add_handler(CommandHandler("short", self.short))
         app.add_handler(CommandHandler("whatislong", self.get_long))
@@ -224,6 +225,7 @@ class TelegramBot:
             logger.error(e)
 
 try:
+    print('fsdakjlasfdkjlsdafkjlasfdkjlfdaskjlfakfsdakjl')
     bot = TelegramBot(apikey, chat_id)
     bot.start_telegram_bots()
 except Exception as e:

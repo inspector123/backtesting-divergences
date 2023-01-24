@@ -26,7 +26,7 @@ handler.setFormatter(formatter)
 # add the handler to the logger
 logger.addHandler(handler)
 
-## wait a minute... doesnt this mean i need a database of all the TSI over the last year?
+## wait a minute... doesnt this mean i need a database of all the rsi over the last year?
 
 
 #no. just export to csv.
@@ -45,9 +45,9 @@ class TelegramBot:
         self.chat_id = chat_id
 
     started = False
-    long_alert = -40
-    short_alert = 40
-    last_tsi = 0
+    long_alert = 30
+    short_alert = 70
+    last_rsi = 0
     bot = None
     eth_1m = pd.DataFrame(data=None, columns=["open_time", "high", "low","open","close","volume","turnover", "date_time"])
         
@@ -56,7 +56,7 @@ class TelegramBot:
         if (self.started is False):
             self.started = True
             await self.bot.send_message(chat_id,'Starting.')
-            await self.bot.send_message(chat_id,'Getting Bybit and TSI data...')
+            await self.bot.send_message(chat_id,'Getting Bybit and rsi data...')
             self.assemble_data()
             await self.bot.send_message(chat_id,'Retrieved data. Starting routine, please wait...')
             self.start_routine()
@@ -90,8 +90,8 @@ class TelegramBot:
             await update.message.reply_text(f'Updating short alert to {text}.')
             self.short_alert = int(text)
 
-    async def get_current_tsi_message(self, update:Update, context):
-        await update.message.reply_text(f"last tsi: {self.last_tsi}, last eth close: {self.eth_1m['close'].iloc[-1]}")
+    async def get_current_rsi_message(self, update:Update, context):
+        await update.message.reply_text(f"last rsi: {self.last_rsi}, last eth close: {self.eth_1m['close'].iloc[-1]}")
 
     async def get_short(self, update:Update, context):
         await update.message.reply_text(f'number alert to short: {self.short_alert}')
@@ -103,11 +103,11 @@ class TelegramBot:
         await update.message.reply_text(f"""    commands: 
         /long NUM: change long alert (should be negative)
         /short NUM: change short alert (should be POSITIVE)
-        /whatislong: get tsi alert number
-        /whatisshort: get tsi alert number
+        /whatislong: get rsi alert number
+        /whatisshort: get rsi alert number
         /help: help
-        /start: start
-        /tsi: get last tsi
+        /startrsi: start
+        /rsi: get last rsi
 
         
         
@@ -117,13 +117,13 @@ class TelegramBot:
     def start_telegram_bots(self):
         app = ApplicationBuilder().bot(Bot(apikey)).build()
 
-        app.add_handler(CommandHandler("start", self.start))
+        app.add_handler(CommandHandler("startrsi", self.start))
         app.add_handler(CommandHandler("long", self.long))
         app.add_handler(CommandHandler("short", self.short))
         app.add_handler(CommandHandler("whatislong", self.get_long))
         app.add_handler(CommandHandler("whatisshort", self.get_short))
 
-        app.add_handler(CommandHandler("tsi", self.get_current_tsi_message))
+        app.add_handler(CommandHandler("rsi", self.get_current_rsi_message))
         app.add_handler(CommandHandler("help", self.list_commands))
         self.bot = app.bot
 
@@ -136,53 +136,62 @@ class TelegramBot:
             time.sleep(1)
             current_time = pd.Timestamp(datetime.now()).second
         try:
-            self.get_last_tsi()
+            self.get_last_rsi()
         except Exception as e:
             logger.error(e)
         finally:
             self.send_to_telegram('Ready.')
         
-    def get_tsi_and_signal(self, close, long, short, signal):
-        diff = close - close.shift(1)
-        abs_diff = abs(diff)
+    #def get_rsi_and_signal(self, close, long, short, signal):
+
+    def get_rsi(self, df, periods = 14, ema = True):
+        """
+        Returns a pd.Series with the relative strength index.
+        """
+        close_delta = df['close'].diff()
+
+        # Make two series: one for lower closes and one for higher closes
+        up = close_delta.clip(lower=0)
+        down = -1 * close_delta.clip(upper=0)
         
-        diff_smoothed = diff.ewm(span = long, adjust = False).mean()
-        diff_double_smoothed = diff_smoothed.ewm(span = short, adjust = False).mean()
-        abs_diff_smoothed = abs_diff.ewm(span = long, adjust = False).mean()
-        abs_diff_double_smoothed = abs_diff_smoothed.ewm(span = short, adjust = False).mean()
-        
-        tsi = (diff_double_smoothed / abs_diff_double_smoothed) * 100
-        signal = tsi.ewm(span = signal, adjust = False).mean()
-        #tsi = tsi[tsi.index >= '2020-01-01'].dropna()
-        #signal = signal[signal.index >= '2020-01-01'].dropna()
-        
-        return tsi, signal
+        if ema == True:
+            # Use exponential moving average
+            ma_up = up.ewm(com = periods - 1, adjust=True, min_periods = periods).mean()
+            ma_down = down.ewm(com = periods - 1, adjust=True, min_periods = periods).mean()
+        else:
+            # Use simple moving average
+            ma_up = up.rolling(window = periods, adjust=False).mean()
+            ma_down = down.rolling(window = periods, adjust=False).mean()
+            
+        rsi = ma_up / ma_down
+        rsi = 100 - (100/(1 + rsi))
+        return rsi
 
     def assemble_data(self):
         print('assembling')
         eth_1m = self.get_minutes(5, "ETHUSDT", 200, 1)
-        eth_1m['tsi'], eth_1m['signal_line'] = self.get_tsi_and_signal(eth_1m['close'], 25, 13, 12)
+        eth_1m['rsi'] = self.get_rsi(eth_1m, 14, False)
         self.eth_1m = eth_1m
-        self.last_tsi = eth_1m['tsi'].iloc[-1]
+        self.last_rsi = eth_1m['rsi'].iloc[-1]
         #eth = eth[eth['date_time'] >= '2020-01-01']
 
-    def get_last_tsi(self):
+    def get_last_rsi(self):
         try:
             updatedPrice = self.get_minutes(1, "ETHUSDT", 1, 1)
             #new_array = pd.concat([self.eth_1m, updatedPrice])
             new_df = self.eth_1m.append(updatedPrice, ignore_index=True)
             new_df.reset_index(drop=True)
             
-            new_df['tsi'], new_df['signal_line'] = self.get_tsi_and_signal(new_df['close'], 25, 5, 14)
-            last_tsi = new_df['tsi'].iloc[-1]
-            self.last_tsi = last_tsi
+            new_df['rsi'] = self.get_rsi(new_df)
+            last_rsi = new_df['rsi'].iloc[-1]
+            self.last_rsi = last_rsi
             self.eth_1m = new_df
             logger.debug(f"{new_df['date_time'].iloc[-1]}")
 
-            if (last_tsi > self.short_alert or last_tsi < self.long_alert):
-                self.send_to_telegram(f"new tsi at {pd.Timestamp(datetime.now())}: {self.last_tsi}; last close: {new_df['close'].iloc[-1]}")
+            if (last_rsi > self.short_alert or last_rsi < self.long_alert):
+                self.send_to_telegram(f"new rsi at {pd.Timestamp(datetime.now())}: {self.last_rsi}; last close: {new_df['close'].iloc[-1]}")
 
-            threading.Timer(60.0, self.get_last_tsi).start()
+            threading.Timer(60.0, self.get_last_rsi).start()
         except Exception as e:
             logger.error(e)
             return

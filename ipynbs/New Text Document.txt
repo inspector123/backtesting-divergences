@@ -1,0 +1,7 @@
+get this
+
+
+when theres a change in price, what is the corresponding change in CCI105B?
+get some kind of histogram.
+
+(what is it before and after? how many times does it swing back and forth?)
